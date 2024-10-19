@@ -10,7 +10,7 @@ from gtts import gTTS
 from pydub import AudioSegment
 import boto3
 import io
-
+import streamlit as st
 
 load_dotenv()
 
@@ -23,14 +23,13 @@ ASSEMBLYAI_API_KEY = os.getenv('ASSEMBLYAI_API_KEY')
 aai.settings.api_key = ASSEMBLYAI_API_KEY
 
 def getVideoFileInput(file_path):
-    # file_path = input("Give the input file path")
-    # file_name = ''
-    # if '/' in file_path :
-    #     t = file_path.split('/')
-    #     file_name = t[len(t)-1].split('.')[0]
-    # else :
-    #     file_name = file_path.split('.')[0]
-    file_name = os.path.splitext(os.path.basename(file_path))[0]
+
+    if '/' in file_path :
+        t = file_path.split('/')
+        file_name = t[len(t)-1]
+    else :
+        file_name = file_path
+    # file_name = os.path.splitext(os.path.basename(file_path))[0]
 
     return file_path , file_name
 
@@ -135,9 +134,9 @@ def create_audio_from_timed_words_polly2(word_timmings, file_name, voice_id='Joe
     } for word in word_timmings]
 
 
-    for i in range(0, len(normalized_timings), 3):
+    for i in range(0, len(normalized_timings), 5):
 
-        word_group = normalized_timings[i:i + 3]
+        word_group = normalized_timings[i:i + 5]
 
         try:
 
@@ -182,15 +181,36 @@ def create_speech2(text, voice_id='Joey', output_format='mp3'):
         raise
 
 
-def main() :
-    video_path,video_name = getVideoFileInput('./video/video1cut.mp4')
-    # print(video_path , video_name)
-    audio_path =  extractAudioFromVideo(video_path , video_name)
-    original_audio_text , words_timed = extractTextFromAudio(audio_path)
-    improved_text , improved_words_timed = correct_transcription(full_text= original_audio_text , original_words_timed=words_timed)
-    new_audio_path = create_audio_from_timed_words_polly2(word_timmings=improved_words_timed , file_name='video1cut')
-    final_combine_audio_video('./video/video1cut.mp4' , new_audio_path , 'video1cut.mp4')
+def main():
+    st.title("Video Audio Enhancer")
 
+
+    uploaded_file = st.file_uploader("Upload a video", type=["mp4", "mov"])
+
+    if uploaded_file is not None:
+
+        with open(os.path.join("temp", uploaded_file.name), "wb") as f:
+            f.write(uploaded_file.read())
+
+
+        video_path, video_name = getVideoFileInput(os.path.join("temp", uploaded_file.name))
+        st.text(video_name)
+        audio_path = extractAudioFromVideo(video_path, video_name)
+
+        st.text("Extracting text from audio...")
+        original_audio_text, words_timed = extractTextFromAudio(audio_path)
+
+        st.text("Correcting transcription...")
+        improved_text, improved_words_timed = correct_transcription(full_text=original_audio_text, original_words_timed=words_timed)
+
+        st.text("Creating new audio from corrected transcription...")
+        new_audio_path = create_audio_from_timed_words_polly2(word_timmings=improved_words_timed, file_name=video_name)
+
+        st.text("Combining new audio with video...")
+        final_combine_audio_video(video_path, new_audio_path, f'{video_name}')
+
+        st.success("Process completed! Download the final video below.")
+        st.video(f'./final_video/{video_name}')
 
 
 

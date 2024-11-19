@@ -78,6 +78,7 @@ def correct_transcription(full_text , original_words_timed):
     response = requests.post(str(AZURE_ENDPOINT_URL) , headers = headers, json = data)
 
     if response.status_code != 200 :
+        print("chat gpt not working")
         print(response.json())
         return
 
@@ -87,6 +88,7 @@ def correct_transcription(full_text , original_words_timed):
 
 
     improved_words_timed = []
+    last_timing = original_words_timed[-1]
     for i in range(len(improved_words)):
         if i < len(original_words_timed):
 
@@ -97,12 +99,13 @@ def correct_transcription(full_text , original_words_timed):
             })
         else:
 
-            last_timing = original_words_timed[-1]
+
             improved_words_timed.append({
                 'text': improved_words[i],
-                'start': last_timing['end'] + 100,  # Add small gap
-                'end': last_timing['end'] + 400     # Approximate duration
+                'start': last_timing['end'] + 100,
+                'end': last_timing['end'] + 400
             })
+            last_timing = improved_words_timed[-1]
 
     return improved_text, improved_words_timed
 
